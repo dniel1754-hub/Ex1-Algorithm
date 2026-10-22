@@ -1,0 +1,20 @@
+Testing Strategy
+
+The testing strategy for this project is divided into three main phases:
+
+Unit Testing, Integration Testing, and Demo Validation.
+
+Unit Testing (Mathematical & Core Logic):Vector Operations: Test the vector normalization function to ensure that dividing a vector by its magnitude yields a unit vector with a length of exactly 1.
+Bounds Checking: Verify that sampling a 3D coordinate outside the dimensions of the NRRD matrix returns a default background value (e.g., 0/black) without throwing an IndexOutOfBounds exception.
+Coordinate Mapping: Validate that the algorithm correctly maps the 2D origin $(0,0)$ to the starting 3D spatial coordinate $P_0$.
+
+Integration Testing (Pipeline & I/O):
+
+Data Loading: Verify that the .nrrd file is correctly parsed into a 3D array (e.g., using pynrrd) and that the dimensions match the expected metadata.
+
+CSV Parsing: Ensure the system correctly reads the .csv file, parses the coordinates line by line, and handles potential formatting issues (e.g., empty lines or missing commas).
+
+Demo & Performance Validation (Step 7 Requirement):
+CLI Execution: Run the command python Ex0.py file.nrrd file.csv file.mp4 to verify the end-to-end pipeline executes without manual intervention.Output Verification: Check that the generated file.mp4 is not corrupted,
+can be opened by standard media players, and contains exactly one frame for each valid row in the CSV file.Performance Benchmarking:
+Measure the execution time of the projection algorithm on a $500^3$ dataset to ensure the processing rate exceeds the minimum requirement of 30 FPS.

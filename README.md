@@ -4,18 +4,18 @@ Ex1: Algorithm - Implementing a Plane Projection of 3D Volume
 
 Welcome to the repository for Exercise 1 of the Introduction to Software Engineering (OOP/OOD) course.
 
-🎯 Goal
+🎯 Goal -
 
 The goal of this assignment is to gain comfort in designing and implementing a complex, under-specified algorithm in a robust, elegant, and runtime-efficient manner. While this is an algorithmic challenge, our primary focus is on software design, architecture, and high code quality.
-📐 Problem Statement
+
+📐 Problem Statement -
 
 Given a 3D raster data matrix ($M$) and a plane ($p$), compute a 2D matrix (image) representing the projection of $p$ onto the volume. Since the problem is not fully specified out-of-the-box, a detailed software design is required.Problem Definition
 Input Matrix ($M$): A 3D matrix of size $sx \times sy \times sz$ byte values, where entries $M[x][y][z]$ are unsigned integers (8, 16, or 32 bits).
 Dimensions: $1 \le sx, sy, sz < 2^{10}$ and $0 \le x < sx$, $0 \le y < sy$, $0 \le z < sz$.
 ⚙️ Implementation Requirements
-Languages: Implemented in any of the following: Java, Python, C, or C++.
-Quality: Code must be correct, stable, and well-designed.
-Performance: For a matrix of size $500^3$ bytes, a runtime of at least 100 FPS is expected, with +30 FPS as a hard requirement (e.g., a proper Java implementation achieves 300+ FPS on an M2 Mac 2023).
+Languages:  Python.
+Performance: For a matrix of size $500^3$ bytes, a runtime of at least 100 FPS is expected, with +30 FPS as a hard requirement 
 📂 Data & Resources
 Format: NRRD format, utilizing data from the 3D Slicer open-source project.
 Sample Data: Start with the recommended 

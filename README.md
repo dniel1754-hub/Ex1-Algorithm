@@ -3,6 +3,7 @@ Implementing a plane projection of 3D volume
 Ex1: Algorithm - Implementing a Plane Projection of 3D Volume
 
 Welcome to the repository for Exercise 1 of the Introduction to Software Engineering (OOP/OOD) course.
+
 🎯 Goal
 
 The goal of this assignment is to gain comfort in designing and implementing a complex, under-specified algorithm in a robust, elegant, and runtime-efficient manner. While this is an algorithmic challenge, our primary focus is on software design, architecture, and high code quality.

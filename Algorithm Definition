@@ -1,12 +1,22 @@
-Algorithm Definition: 3D to 2D Plane Projection1. The Approach (Backward Mapping)To achieve the strict performance requirements of this project (rendering $>30$ FPS for a $500^3$ byte matrix), a naive forward-mapping approach (iterating through all voxels in the 3D volume to find which ones intersect the plane) is computationally prohibitive.Instead, this algorithm implements Backward Mapping combined with a Ray-Casting/Scanning methodology. The algorithm iterates exclusively over the pixels of the target 2D output image. For each 2D pixel, it computes the corresponding 3D spatial coordinate on the defined plane, and samples the value directly from the 3D volume matrix ($M$). This ensures the time complexity is bounded by the size of the 2D output image rather than the massive 3D volume.2. Geometric Setup (Triangle or Trapezoid)The target plane can be defined by either 3 points (forming an isosceles triangle) or 4 points (forming an isosceles trapezoid).   Case A: 3 Points (Isosceles Triangle)
-Given points $A, B, C$ where $dist(A,B) = dist(A,C)$:   The scanning boundaries start at a single top vertex: $A' = A$ and $A'' = A$.The lateral vectors are $\vec{A'B}$ and $\vec{A''C}$.Case B: 4 Points (Isosceles Trapezoid)
-Given points $A', A'', B, C$ where the vectors $\vec{A'B}$ and $\vec{A''C}$ are on the same plane and have the same length:   The scanning boundaries start at the two top vertices: $A'$ and $A''$.The lateral vectors are $\vec{A'B}$ and $\vec{A''C}$.   Common Initialization:Calculate Distances:
+Algorithm Definition:
+3D to 2D Plane Projection1.
+The Approach (Backward Mapping) To achieve the strict performance requirements of this project (rendering $>30$ FPS for a $500^3$ byte matrix), a naive forward-mapping approach (iterating through all voxels in the 3D volume to find which ones intersect the plane) is computationally prohibitive.
+Instead, this algorithm implements Backward Mapping combined with a Ray-Casting/Scanning methodology.
+The algorithm iterates exclusively over the pixels of the target 2D output image. For each 2D pixel, it computes the corresponding 3D spatial coordinate on the defined plane, and samples the value directly from the 3D volume matrix ($M$). 
+This ensures the time complexity is bounded by the size of the 2D output image rather than the massive 3D volume.2. 
+Geometric Setup (Triangle or Trapezoid)The target plane can be defined by either 3 points (forming an isosceles triangle) or 4 points (forming an isosceles trapezoid).   Case A: 3 Points (Isosceles Triangle)
+Given points $A, B, C$ where $dist(A,B) = dist(A,C)$:  
+The scanning boundaries start at a single top vertex: $A' = A$ and $A'' = A$.The lateral vectors are $\vec{A'B}$ and $\vec{A''C}$.
+Case B: 4 Points (Isosceles Trapezoid)
+Given points $A', A'', B, C$ where the vectors $\vec{A'B}$ and $\vec{A''C}$ are on the same plane and have the same length:   The scanning boundaries start at the two top vertices: $A'$ and $A''$.The lateral vectors are $\vec{A'B}$ and $\vec{A''C}$. 
+Common Initialization:Calculate Distances:
 Let $D_{legs} = dist(A',B) = dist(A'',C)$ be the length of the lateral legs.
-Let $D_{bc} = dist(B,C)$ be the length of the bottom base.   Calculate Normalized Step Vectors:
+Let $D_{bc} = dist(B,C)$ be the length of the bottom base.   Calculate Normalized Step  Vectors:
 $\vec{v}_1 = \frac{\vec{A'B}}{D_{legs}}$
 $\vec{v}_2 = \frac{\vec{A''C}}{D_{legs}}$
 These vectors represent exactly one "step" (unit length) in 3D space along their respective edges.   Initialize Output Matrix:
-Define a 2D output matrix $E$ with a height of $D_{legs}$ (rows) and a width of $D_{bc}$ (columns).   3. The Scanning ProcessThe algorithm acts like a scanner, moving top-down, row by row.   Vertical Progression (Y-axis):
+Define a 2D output matrix $E$ with a height of $D_{legs}$ (rows) and a width of $D_{bc}$ (columns).  
+3. The Scanning ProcessThe algorithm acts like a scanner, moving top-down, row by row.   Vertical Progression (Y-axis):
 Initialize two virtual boundary points, $a_1$ starting at $A'$ and $a_2$ starting at $A''$.
 A loop runs for $y$ from $0$ up to $D_{legs}$ (representing the rows of the 2D image).
 In each iteration, the boundary points advance one step down the edges:
@@ -15,6 +25,11 @@ $a_2 = a_2 + \vec{v}_2$   Horizontal Progression (X-axis):
 For the current row, calculate the physical distance between the two boundary points: $d_{12} = dist(a_1, a_2)$.
 Calculate the normalized horizontal step vector for this specific row: $\vec{dp} = \frac{\vec{a_1 a_2}}{d_{12}}$.
 Initialize a sampling point $p$ at $a_1$.
-A nested loop runs for $x_1$ from $0$ up to $d_{12}$ to scan the horizontal line in 3D space.   4. Sampling & Edge CasesDuring the horizontal scan, the algorithm must sample the 3D matrix $M$ and populate the 2D matrix $E$:   Matrix Sampling: For the current 3D point $p$, retrieve the voxel value: $v = M[p]$. To maintain high runtime performance, Nearest-Neighbor Interpolation is utilized by casting/rounding the floating-point coordinates of $p$ to the nearest integer indices.   Out-of-Bounds Handling: If the calculated 3D coordinate $p$ falls outside the dimensions of the original matrix $M$, the algorithm gracefully assigns a default background value (e.g., $v = 0$), preventing IndexOutOfBounds exceptions.   Image Centering: Because the shape is narrower at the top and wider at the bottom, the sampled row must be centered in the rectangular output matrix $E$. The 2D target $x$-coordinate is calculated as:
+A nested loop runs for $x_1$ from $0$ up to $d_{12}$ to scan the horizontal line in 3D space.  
+4. Sampling & Edge CasesDuring the horizontal scan, the algorithm must sample the 3D matrix $M$ and populate the 2D matrix $E$: 
+Matrix Sampling: For the current 3D point $p$, retrieve the voxel value: $v = M[p]$. To maintain high runtime performance, Nearest-Neighbor Interpolation is utilized by casting/rounding the floating-point coordinates of $p$ to the nearest integer indices.   
+Out-of-Bounds Handling: If the calculated 3D coordinate $p$ falls outside the dimensions of the original matrix $M$, the algorithm gracefully assigns a default background value (e.g., $v = 0$), preventing IndexOutOfBounds exceptions.   
+Image Centering: Because the shape is narrower at the top and wider at the bottom, the sampled row must be centered in the rectangular output matrix $E$. The 2D target $x$-coordinate is calculated as:
 $x = \frac{D_{bc}}{2} - \frac{d_{12}}{2} + x_1$
-The sampled value $v$ is then placed at $E[x][y]$.   Advance Point: The point $p$ is advanced by one step along the row: $p = p + \vec{dp}$.   5. Return ValueOnce the loops complete, the fully populated 2D matrix $E$ is returned, representing a single projected frame of the 3D volume on the specified plane.   
+The sampled value $v$ is then placed at $E[x][y]$.   Advance Point: The point $p$ is advanced by one step along the row: $p = p + \vec{dp}$.  
+5. Return ValueOnce the loops complete, the fully populated 2D matrix $E$ is returned, representing a single projected frame of the 3D volume on the specified plane.   

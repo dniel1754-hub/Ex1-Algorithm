@@ -109,3 +109,102 @@ The code follows OOP/OOD principles, with one responsibility per component:
 - **Libraries:** `numpy`, `numba` (compiled projection; optional), `pynrrd` (NRRD I/O), `imageio` + `imageio-ffmpeg` (MP4 / H.264), `pytest` (tests). See `requirements.txt`.
 - **Interface:** command line only, no GUI
 - **OS:** cross-platform (Windows, macOS, Linux)
+
+## 5. Use cases
+
+There are two actors: the **User**, who renders videos (for example a student or the grader), and the **Developer**, who checks performance. Both work at the command line.
+
+```mermaid
+flowchart LR
+    user(["👤 User"])
+    dev(["👤 Developer"])
+    subgraph system ["Plane projection system"]
+        uc1(["UC-01 Render a projection video"])
+        uc2(["UC-02 Measure projection speed"])
+        val(["Validate planes"])
+    end
+    user --- uc1
+    dev --- uc2
+    uc1 -. "«include»" .-> val
+```
+
+### UC-01: Render a projection video
+| | |
+|---|---|
+| **Actor** | User |
+| **Preconditions** | Python and `requirements.txt` are installed. An NRRD volume and a plane CSV exist. |
+| **Trigger** | `python Ex0.py <file.nrrd> <file.csv> <file.mp4>` |
+| **Postcondition** | `<file.mp4>` holds exactly one frame per CSV data row, in row order, and the exit code is 0. |
+
+**Main success flow**
+1. The User runs `Ex0.py` with the three paths.
+2. The system checks that both input files and the output folder exist (FR-7).
+3. The system loads the volume (FR-1).
+4. The system reads the CSV and validates every plane (FR-2, FR-3).
+5. The system sizes the video canvas from the valid planes (FR-5).
+6. For each row, in order, the system projects the plane, converts the image to an 8-bit frame on the canvas, and writes it (FR-4, FR-5).
+7. The system prints a summary (frames written, frames black, projection FPS) and exits with code 0.
+
+**Alternative flows**
+- **2a.** Wrong number of arguments: the system prints the usage line and exits with code 2.
+- **2b.** An input file or the output folder is missing: the system prints an error and exits with code 1.
+- **3a.** The file is not a readable 3D NRRD, or an axis is larger than 1023: the system prints an error and exits with code 1.
+- **4a.** A row is malformed or fails validation: the system prints a warning with the frame number, line number and reason. In step 6 it writes a black frame for that row (FR-6).
+- **4b.** No row is valid: the system prints an error and exits with code 1.
+- **6a.** A plane lies partly or fully outside the volume: those pixels are black. This is not an error and gives no warning (FR-4).
+
+```mermaid
+flowchart TD
+    start((start)) --> args{3 arguments?}
+    args -- no --> usage[Print usage, exit 2]
+    args -- yes --> files{inputs and output folder exist?}
+    files -- no --> err1[Print error, exit 1]
+    files -- yes --> load{NRRD readable and 3D?}
+    load -- no --> err1
+    load -- yes --> read[Read CSV, validate each row]
+    read --> any{any valid row?}
+    any -- no --> err1
+    any -- yes --> warn[Warn about each invalid row]
+    warn --> canvas[Size canvas from valid planes]
+    canvas --> next{next row?}
+    next -- valid --> proj[Project plane, compose frame, write]
+    next -- invalid --> black[Write black frame]
+    proj --> next
+    black --> next
+    next -- none left --> done[Print summary, exit 0]
+```
+
+### UC-02: Measure projection speed
+| | |
+|---|---|
+| **Actor** | Developer |
+| **Preconditions** | `requirements.txt` is installed, with about 200 MB of free memory. |
+| **Trigger** | `python benchmarks/bench_projection.py` |
+| **Postcondition** | A per-plane FPS table is printed, and the exit code is 0 only if the default projector reaches at least 30 FPS (NFR-1). |
+
+**Main success flow**
+1. The Developer runs the benchmark.
+2. The system builds a random `500³` uint8 volume.
+3. For each projector (Numba, then NumPy for comparison), the system warms it up, then times 200 projections of each benchmark plane.
+4. The system prints the mean FPS and p95 time per plane, and a verdict for the default projector.
+
+**Alternative flows**
+- **3a.** Numba is not installed: only `NumpyProjector` is measured, and the verdict applies to it.
+
+## Appendix A: Traceability matrix
+
+This matrix links each requirement to its use case, design, code and test cases. The test cases (`TC-xx`) are listed in [TESTING.md](TESTING.md#5-test-description-std) and the decisions (`ADR-xxxx`) in [docs/adr/](docs/adr/). Status is from the last run of `python -m pytest` and the benchmark, on 2026-10-26.
+
+| Requirement | Use case | Design | Code | Test cases | Status |
+|---|---|---|---|---|---|
+| FR-1 Volume loading | UC-01 step 3 | SDD §3, ADR-0003 | `volume.py` | TC-27, TC-28, TC-37, TC-38, TC-39 | Passed |
+| FR-2 CSV parsing | UC-01 step 4 | SDD §5, ADR-0001 | `plane_reader.py` | TC-04, TC-05, TC-15–TC-20 | Passed |
+| FR-3 Plane validation | UC-01 step 4 | SDD §3 | `geometry.py` | TC-01–TC-13, TC-20, TC-43 | Passed |
+| FR-4 Projection | UC-01 step 6 | ALGORITHM.md, ADR-0004 | `projector.py`, `_kernel.py` | TC-14, TC-21–TC-31, TC-43, TC-45 | Passed |
+| FR-5 Video generation | UC-01 steps 5–6 | SDD §4 | `frame_composer.py`, `video_writer.py` | TC-32–TC-36, TC-40, TC-45, TC-46 | Passed |
+| FR-6 Invalid planes | UC-01 alt. 4a, 4b | ADR-0002 | `plane_reader.py`, `Ex0.py` | TC-15, TC-19, TC-36, TC-40, TC-42, TC-43 | Passed |
+| FR-7 Command line | UC-01 steps 1–2, alt. 2a, 2b | SDD §4 | `Ex0.py` | TC-40, TC-41 | Passed |
+| NFR-1 Performance | UC-02 | ALGORITHM.md §5, ADR-0005 | `_kernel.py`, `projector.py` | TC-30, TC-44 | Passed (453 FPS worst case) |
+| NFR-2 Robustness | UC-01 alt. flows | SDD §4 | all | TC-09, TC-11, TC-12, TC-19, TC-25, TC-33, TC-38, TC-41 | Passed |
+| NFR-3 Software design | — | SDD §2–3 | `projection/` | Design review in pull request | Reviewed |
+| NFR-4 Testability | — | SDD §3 | `projector.py` | TC-29, TC-30 | Passed |

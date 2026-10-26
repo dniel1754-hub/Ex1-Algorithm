@@ -26,12 +26,12 @@ All automated tests use **pytest** and live under `tests/`. Most tests use small
 - A wrong point count (for example `5`), a missing coordinate or a non-numeric value marks the row invalid with its row number. Parsing continues.
 - Negative and floating-point coordinates are accepted.
 
-### 1.3 Projection (`Projector`)
+### 1.3 Projection (`NumbaProjector` and `NumpyProjector`; every test runs on both)
 Use synthetic volumes whose voxel value encodes its position:
 
 | Test | Setup | Expectation |
 |---|---|---|
-| **Coordinate mapping** | `M[x,y,z] = x` (uint16), triangle in the plane `z = const` | Every pixel inside the shape equals the rounded x-coordinate of its analytic 3D point |
+| **Coordinate mapping** | `M[x,y,z] = x + 64y + 4096z` (uint32), so each value tells which voxel was sampled | Every sampled voxel lies within half a voxel diagonal of the plane |
 | **Top edge and base** | Same volume | Row 0 samples the apex `a`. Row `H−1` samples points on `b–c`, with its first and last inside pixels at `b` and `c` |
 | **Output size** | Any valid plane | `E.shape == (⌊Dleg⌋+1, ⌊Dbc⌋+1)` |
 | **Shape mask** | Constant volume `M = 7` fully containing the triangle | Inside pixels are 7, outside pixels are 0. Each row's inside width is about `d12(y)` |
@@ -39,7 +39,7 @@ Use synthetic volumes whose voxel value encodes its position:
 | **Fully outside** | Plane entirely outside the volume | E is all 0 |
 | **Axis order** | Volume with distinct `sx ≠ sy ≠ sz`, single bright voxel | The pixel lights up only when the plane passes through that `(x, y, z)` |
 | **Value types** | Same test with uint8, uint16 and uint32 | Output dtype equals input dtype. Values above 255 are kept exactly |
-| **Loop reference** | Random volume and plane | The vectorized `Projector` equals a slow, literal per-pixel loop implementation |
+| **Loop reference** | Random volume and plane | Both projectors are bit-identical to a slow, plain per-pixel loop |
 
 ### 1.4 Frame composition (`FrameComposer`)
 - Intensity window: the volume minimum maps to 0, the maximum to 255, and the output is uint8. A constant volume is handled without dividing by zero.

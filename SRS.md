@@ -81,7 +81,7 @@ python Ex0.py <file.nrrd> <file.csv> <file.mp4>
 ### NFR-1: Performance (critical)
 - For a `500³` uint8 volume, projection throughput shall be **≥ 30 FPS**, with a target of **≥ 100 FPS**.
 - FPS is measured on the projection step alone (computing E from M and a plane), averaged over the frames of a run. File I/O and video encoding are excluded.
-- To meet this, the projection is vectorized with NumPy (see [ALGORITHM.md §5](ALGORITHM.md#5-vectorized-implementation)). Per-pixel Python loops are not allowed in the hot path.
+- To meet this, the projection runs as a Numba-compiled parallel loop, with a vectorized NumPy fallback (see [ALGORITHM.md §5](ALGORITHM.md#5-implementation)). Per-pixel Python loops are not allowed in the hot path.
 
 ### NFR-2: Robustness
 - The system handles missing files, wrong formats, malformed CSV rows and degenerate or invalid geometry without crashing (FR-6, FR-7).
@@ -95,7 +95,7 @@ The code follows OOP/OOD principles, with one responsibility per component:
 | `Volume` | Loads the NRRD and exposes the array, shape, dtype and intensity window |
 | `Plane` (`TrianglePlane`, `TrapezoidPlane`) | Geometry and validation of one plane |
 | `PlaneReader` | Parses the CSV into a list of planes or invalid-row records |
-| `Projector` | Computes E from a `Volume` and a `Plane` |
+| `Projector` (`NumbaProjector`, `NumpyProjector`) | Computes E from the volume array and a `Plane` |
 | `FrameComposer` | Maps intensities to 8 bits and places E on the fixed-size canvas |
 | `VideoWriter` | Encodes frames to MP4 |
 | `Ex0.py` | CLI entry point that wires the components together |
@@ -105,6 +105,6 @@ The code follows OOP/OOD principles, with one responsibility per component:
 
 ## 4. System Environment
 - **Language:** Python 3.10+
-- **Libraries:** `numpy`, `pynrrd` (NRRD I/O), `imageio` + `imageio-ffmpeg` (MP4 / H.264), `pytest` (tests)
+- **Libraries:** `numpy`, `numba` (compiled projection; optional), `pynrrd` (NRRD I/O), `imageio` + `imageio-ffmpeg` (MP4 / H.264), `pytest` (tests). See `requirements.txt`.
 - **Interface:** command line only, no GUI
 - **OS:** cross-platform (Windows, macOS, Linux)

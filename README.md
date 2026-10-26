@@ -65,11 +65,28 @@ We use the dataset shared by a classmate: [Google Drive folder](https://drive.go
 
 NRRD files are large and are not committed (see `.gitignore`). Download the folder's contents into `data/`.
 
-## Running the demo
+## Running
 ```bash
-pip install numpy pynrrd imageio imageio-ffmpeg
-python Ex0.py data/MRHead_1.nrrd data/head.csv out.mp4
+pip install -r requirements.txt
+python Ex0.py data/MRHead_1.nrrd data/head.csv out.mp4      # the demo
+python -m pytest                                            # the tests
+python benchmarks/bench_projection.py                       # FPS on a 500³ volume
 ```
+
+`Ex0.py` prints a warning for each invalid CSV row (and writes a black frame for it), then a summary with the projection FPS.
+
+## Code layout
+| Path | Contents |
+|---|---|
+| [Ex0.py](Ex0.py) | Command-line demo that wires the components together |
+| [projection/geometry.py](projection/geometry.py) | `TrianglePlane`, `TrapezoidPlane` and their validation |
+| [projection/plane_reader.py](projection/plane_reader.py) | `PlaneReader`: CSV → plane records (valid or with an error) |
+| [projection/volume.py](projection/volume.py) | `Volume`: NRRD loading, intensity window |
+| [projection/projector.py](projection/projector.py) | `NumbaProjector` (default) and `NumpyProjector` (fallback) |
+| [projection/frame_composer.py](projection/frame_composer.py) | `FrameComposer`: 8-bit mapping and fixed-size canvas |
+| [projection/video_writer.py](projection/video_writer.py) | `VideoWriter`: H.264 MP4 output |
+| [tests/](tests/) | pytest suite |
+| [benchmarks/](benchmarks/) | FPS benchmark |
 
 ## Progress
 - [x] Repository, problem statement and scope (this README)
@@ -77,9 +94,11 @@ python Ex0.py data/MRHead_1.nrrd data/head.csv out.mp4
 - [x] Detailed algorithm
 - [x] Dataset of NRRD files
 - [x] Testing strategy, including the demo
-- [ ] Implementation (commit frequently)
-- [ ] Demo `Ex0.py <file.nrrd> <file.csv> <file.mp4>`
-- [ ] Experiment: results, FPS benchmark and output `.mp4`
+- [x] Implementation (commit frequently)
+- [x] Demo `Ex0.py <file.nrrd> <file.csv> <file.mp4>`
+- [ ] Experiment: results on the class dataset and output `.mp4`
 
 ## Experiment results
-*To be added after implementation: FPS on a `500³` volume, the machine spec, and the output video.*
+**Projection speed** on a random `500³` uint8 volume, from `benchmarks/bench_projection.py`: **453–3823 FPS** with `NumbaProjector`, depending on the plane. The slowest is a large oblique 708 × 501 plane. The required minimum is 30 FPS and the target is 100. The per-plane table is in [ALGORITHM.md §5](ALGORITHM.md#5-implementation).
+
+*Still to add: output videos and observations on the class dataset.*

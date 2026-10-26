@@ -49,42 +49,44 @@ The row is **centred** in E: its left end is at column `Dbc/2 − d12(y)/2`. For
 x1 = x − (Dbc/2 − d12(y)/2)
 ```
 
-The pixel is **inside the shape** when `0 ≤ x1 ≤ d12(y)`. Its 3D sample point is:
+The pixel is **inside the shape** when `−½ ≤ x1 ≤ d12(y) + ½`, meaning its pixel cell touches the row's span. Its 3D sample point is taken at the nearest point on the span:
 
 ```
-p(y, x) = a1(y) + x1 · dp(y)
+p(y, x) = a1(y) + clamp(x1, 0, d12(y)) · dp(y)
 ```
+
+> **Why the half-pixel margin.** Without it, a row narrower than one pixel (for example the apex row of a triangle) could fall between two integer columns and disappear. With the margin, every row has at least one pixel. Clamping keeps every sample on the shape itself.
 
 > **Why we invert the column formula.** The course pseudocode walks `x1 = 0, 1, …` and writes to the column `x = Dbc/2 − d12/2 + x1`, which is usually not a whole number. Rounding it can leave gaps or write the same pixel twice. Computing `x1` from every integer column `x` is pure backward mapping: every pixel of E is computed exactly once.
 
 ## 4. Sampling and edge cases
 - **Nearest neighbour.** `p` is rounded to the nearest integer index `(i, j, k)`, and `v = M[i][j][k]`. This is the fastest method and does not create values that aren't in the data.
 - **Outside the volume.** If `(i, j, k)` is outside `[0, sx) × [0, sy) × [0, sz)`, then `v = 0`. Points with negative coordinates are allowed and simply fall outside.
-- **Outside the shape.** Pixels with `x1 < 0` or `x1 > d12(y)` are `0`.
+- **Outside the shape.** Pixels with `x1 < −½` or `x1 > d12(y) + ½` are `0`.
 - **Storage.** E is stored row-major as `E[y, x]`, the usual image layout. This is the same pixel the pseudocode calls `E[x][y]`.
 - **Value type.** E has the same dtype as M (uint8, uint16 or uint32). Conversion to 8 bits happens later, when the frame is composed (SRS FR-5).
 
-## 5. Vectorized implementation
-Every formula above is a closed-form function of `(y, x)`, so a whole frame can be computed with NumPy array operations instead of Python loops:
+## 5. Implementation
+The per-row values `a1(y)`, `dp(y)`, `d12(y)` and the start column are computed once per frame as small `(H, 3)` arrays (`Projector._rows`). The per-pixel step then has two interchangeable implementations ([projection/projector.py](projection/projector.py)):
 
-```python
-y = np.arange(H)[:, None]                  # (H, 1)
-x = np.arange(W)[None, :]                  # (1, W)
-A1 = a1 + y * v1                           # (H, 3)   left boundary per row
-A2 = a2 + y * v2                           # (H, 3)   right boundary per row
-d12 = np.linalg.norm(A2 - A1, axis=-1)     # (H,)
-dp  = (A2 - A1) / np.maximum(d12, EPS)[:, None]
-x1  = x - (Dbc / 2 - d12[:, None] / 2)     # (H, W)
-inside = (x1 >= 0) & (x1 <= d12[:, None])
-P   = A1[:, None, :] + x1[..., None] * dp[:, None, :]   # (H, W, 3)
-idx = np.rint(P).astype(np.intp)
-valid = inside & np.all((idx >= 0) & (idx < M.shape), axis=-1)
-E = np.zeros((H, W), M.dtype)
-E[valid] = M[idx[valid, 0], idx[valid, 1], idx[valid, 2]]
-```
+| Class | How | Notes |
+|---|---|---|
+| `NumbaProjector` (default) | A compiled loop over the rows in parallel (`numba.prange`). Each pixel is computed once, as in §3–4 | Used by `Ex0.py` |
+| `NumpyProjector` (fallback) | The same formulas as whole-array `(H, W)` operations. Bounds are checked with a single unsigned compare, then one `np.take` on a flat view of the volume | Used when Numba is not installed |
 
-- **Cost.** About `H·W` samples per frame. A large plane in a `500³` volume is around 500 × 700 pixels, or 350k samples, which NumPy handles in a few milliseconds. That is comfortably above 100 FPS.
-- **Optimization path.** If profiling shows that the `(H, W, 3)` temporaries dominate, use `float32` for them and preallocate buffers, or move the inner computation to Numba.
+The two do the same floating-point operations in the same order, and the tests check that their output is **bit-identical** to a plain per-pixel reference loop.
+
+**Measured on a random `500³` uint8 volume** (`benchmarks/bench_projection.py`, Intel laptop CPU, 12 threads):
+
+| Plane | Image | Numba FPS | NumPy FPS |
+|---|---|---|---|
+| Lecturer triangle (axis-aligned) | 448 × 401 | 3823 | 103 |
+| Lecturer rectangle (axis-aligned) | 501 × 401 | 2405 | 56 |
+| Oblique triangle | 708 × 708 | 836 | 22 |
+| Oblique trapezoid | 532 × 501 | 654 | 40 |
+| Diagonal slab | 708 × 501 | 453 | 27 |
+
+**Why NumPy alone isn't enough.** It meets the targets on axis-aligned planes but drops below 30 FPS on large oblique ones. The volume lookups take only about 5 ms of a 30 ms frame; the rest is the dozen full-array passes needed to compute coordinates. A compiled loop does all of that in one pass per pixel.
 
 ## 6. Return value
 The algorithm returns E, an `H × W` image with the dtype of M. It is one projected frame of the volume on the given plane.

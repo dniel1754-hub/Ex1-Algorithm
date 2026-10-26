@@ -63,7 +63,7 @@ We use the dataset shared by a classmate: [Google Drive folder](https://drive.go
 | any volume | `lecturer_example.csv` | The course's sample CSV (also in [data/](data/lecturer_example.csv)): 3 valid planes and 1 non-isosceles triangle (row 3) |
 | `dice.nrrd` (synthetic, not in the folder) | `edge_cases.csv` | Edge cases with expected results written in comments |
 
-NRRD files are large and are not committed (see `.gitignore`). Download the folder's contents into `data/`.
+NRRD files are large and are not committed (see `.gitignore`). Download them from the folder into `data/`. The CSVs are committed in [data/](data/).
 
 ## Running
 ```bash
@@ -96,9 +96,28 @@ python benchmarks/bench_projection.py                       # FPS on a 500³ vol
 - [x] Testing strategy, including the demo
 - [x] Implementation (commit frequently)
 - [x] Demo `Ex0.py <file.nrrd> <file.csv> <file.mp4>`
-- [ ] Experiment: results on the class dataset and output `.mp4`
+- [x] Experiment: results on the class dataset and output `.mp4`
 
 ## Experiment results
 **Projection speed** on a random `500³` uint8 volume, from `benchmarks/bench_projection.py`: **453–3823 FPS** with `NumbaProjector`, depending on the plane. The slowest is a large oblique 708 × 501 plane. The required minimum is 30 FPS and the target is 100. The per-plane table is in [ALGORITHM.md §5](ALGORITHM.md#5-implementation).
 
-*Still to add: output videos and observations on the class dataset.*
+### Class dataset
+Each volume from the [class dataset](https://drive.google.com/drive/folders/1koJ83uaeMYdJt6AwvVlmMJk_wzczvmmG?usp=sharing) was run with its own plane CSV, using `python Ex0.py data/<volume>.nrrd data/<csv>.csv experiment/<name>.mp4`. Each row has an output video in [experiment/](experiment/) and a strip of 6 sampled frames in [experiment/previews/](experiment/previews/).
+
+| Volume | Size, type | CSV | Frames | Projection FPS | Video | Preview |
+|---|---|---|---|---|---|---|
+| MRHead_1 | 256×256×130, int16 | `head.csv` | 280 | 1380 | [mp4](experiment/MRHead_1__head.mp4) | [png](experiment/previews/MRHead_1__head.png) |
+| biscuit_cake | 256×256×130, uint16 | `biscuit_cake.csv` | 120 | 1772 | [mp4](experiment/biscuit_cake.mp4) | [png](experiment/previews/biscuit_cake.png) |
+| croissant | **500×500×500**, uint8 | `croissant.csv` | 100 | **566** | [mp4](experiment/croissant.mp4) | [png](experiment/previews/croissant.png) |
+| croissant | 500×500×500, uint8 | `lecturer_example.csv` | 4 (1 black) | 733 | [mp4](experiment/croissant__lecturer_example.mp4) | [png](experiment/previews/croissant__lecturer_example.png) |
+| onion | 256×256×130, uint8 | `onion.csv` | 120 | 1014 | [mp4](experiment/onion.mp4) | [png](experiment/previews/onion.png) |
+| swiss_roll | 256×256×130, uint32 | `swiss_roll.csv` | 120 | 1650 | [mp4](experiment/swiss_roll.mp4) | [png](experiment/previews/swiss_roll.png) |
+
+**Observations**
+- **Correctness.** The frames show the expected structures, matching the dataset's reference images (`images/` in the Drive folder): the head's sagittal sweep and the rotating planes, the croissant's layers, the swiss roll's spiral and its candles.
+- **Every value type works.** The volumes cover int16, uint16, uint8 and uint32. Each video uses a single intensity window for the whole volume, so its brightness doesn't flicker from frame to frame.
+- **Performance.** On real data, projection ran at 566 FPS on the 500³ croissant and above 1000 FPS on the 256×256×130 volumes. That is well above the 100 FPS target. Total run time is dominated by NRRD decompression and H.264 encoding, not by the projection.
+- **Invalid rows.** The lecturer's row 3 is not isosceles. It was reported with a warning and written as a black frame, so frame *i* still matches row *i*.
+- **Planes outside the volume.** The rotating planes in `head.csv` reach beyond the volume (z goes as low as −24). Those frames show only the part inside the volume and black elsewhere, with no errors.
+- **Voxel versus physical space.** We work in voxel indices and ignore the NRRD voxel spacing. So volumes with non-cubic voxels look slightly squashed along the slice axis compared with the reference images, which are drawn in millimetres: MRHead's voxels are 1 × 1 × 1.3 mm and the swiss roll's are 1.1 × 1.1 × 1.43 mm. A possible extension is to resample by the `space directions` field.
+- **Not run:** `edge_cases.csv`. It needs a synthetic `dice.nrrd`, which isn't in the shared folder.

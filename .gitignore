@@ -222,3 +222,6 @@ venv/
 # Volume data (large, download separately)
 *.nrrd
 *.mp4
+
+# Experiment outputs are committed
+!experiment/*.mp4

@@ -103,6 +103,6 @@ Unless marked otherwise, each case is an automated pytest function in `tests/`. 
 ### 5.6 Performance and manual cases
 | ID | Test | Verifies | Procedure | Expected | Last result |
 |---|---|---|---|---|---|
-| TC-44 | `benchmarks/bench_projection.py` | NFR-1, UC-02 | Run the script | Default projector ≥ 30 FPS (target 100), exit code 0 | 453–3823 FPS (Numba), passed |
+| TC-44 | `benchmarks/bench_projection.py` | NFR-1 | Run the script | Default projector ≥ 30 FPS (target 100), exit code 0 | 453–3823 FPS (Numba), passed |
 | TC-45 | Class dataset experiment (manual) | FR-4, FR-5, UC-01 | Run `Ex0.py` on each class volume with its CSV, then compare the frames in `experiment/previews/` with the dataset's `images/*.png` | Same structures. Views follow the voxel axes, so they may be rotated relative to the anatomical views, and volumes with non-cubic voxels look squashed (ADR-0003) | Passed for all 5 volumes, 2026-10-26 |
 | TC-46 | Playback (manual) | FR-5 | Open the `experiment/*.mp4` files in a browser or VLC | Plays, with duration = frames ÷ 10 FPS | Passed in Chromium for `swiss_roll.mp4` (12 s, 256×256). The rest were decoded with ffmpeg only |

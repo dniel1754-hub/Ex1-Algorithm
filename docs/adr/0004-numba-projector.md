@@ -1,4 +1,4 @@
-# ADR-0005: Numba-compiled projector, with a NumPy fallback
+# ADR-0004: Numba-compiled projector, with a NumPy fallback
 
 - **Status:** Accepted
 - **Date:** 2026-10-26

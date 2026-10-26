@@ -182,29 +182,11 @@ sequenceDiagram
 
 No stack trace reaches the user for an expected failure (NFR-2).
 
-## 5. Data
+## 5. Data, libraries and runtime
+- **File formats** (NRRD, the plane CSV, MP4) are specified in [SRS FR-1, FR-2 and FR-5](SRS.md#2-functional-requirements). The image E is described in [ALGORITHM.md](ALGORITHM.md).
+- **Volume in memory:** pynrrd loads the NRRD in Fortran index order, so `data[x, y, z]` matches the CSV coordinates with no copy or transpose. It is held once: 125 MB for 500³ uint8, up to 4.3 GB for 1023³ uint32.
+- **Libraries:** NumPy, Numba (optional), pynrrd for NRRD input, imageio with imageio-ffmpeg for H.264 MP4 output at 10 FPS, and pytest for the tests. Versions are in `requirements.txt`.
+- **Runtime:** one Python process, with no network and no server. Numba spreads rows across all CPU cores and caches the compiled kernel in `projection/__pycache__`, so only the first run pays the roughly 1 s compile time.
 
-| Data | Format | Notes |
-|---|---|---|
-| Volume (input) | NRRD, any integer or float type, 3D, each axis ≤ 1023 | Loaded with pynrrd's default Fortran index order, so `data[x, y, z]` matches CSV coordinates. Spacing and origin are ignored (ADR-0003) |
-| Planes (input) | CSV: `n, x1,y1,z1, …, x4,y4,z4`, with a header row, blank lines and `#` comments allowed | 4-point rows are in leg order `a1, b, a2, c` (ADR-0001) |
-| `PlaneRecord` | `frame`, `line`, `plane` or `error` | `frame` is the 1-based data row number |
-| Image E | `(⌊leg⌋+1) × (⌊base⌋+1)` array, same dtype as the volume | Stored as `E[y, x]` (ALGORITHM.md) |
-| Frame | `uint8`, canvas size = maximum E size, rounded up to even | One window for the whole volume (FR-5) |
-| Video (output) | MP4, H.264, yuv420p, 10 FPS | One frame per CSV data row |
-
-## 6. Deployment
-- One Python process on the user's machine (Windows, macOS or Linux), with no network access and no server.
-- `NumbaProjector` spreads rows across all CPU cores (`numba.prange`). The compiled kernel is cached in `projection/__pycache__`, so only the first run pays the roughly 1 s compile time.
-- Memory: the volume is held once (125 MB for 500³ uint8, up to 4.3 GB for 1023³ uint32), plus one image and one frame at a time.
-
-## 7. Design rationale
-The major decisions are recorded as Architecture Decision Records:
-
-| ADR | Decision |
-|---|---|
-| [ADR-0001](docs/adr/0001-csv-point-order.md) | 4-point CSV rows are read in leg order `a1, b, a2, c` |
-| [ADR-0002](docs/adr/0002-invalid-rows-black-frames.md) | Invalid rows give a warning and a black frame; the run continues |
-| [ADR-0003](docs/adr/0003-voxel-coordinates.md) | Coordinates are voxel indices; NRRD spacing is ignored |
-| [ADR-0004](docs/adr/0004-half-pixel-margin.md) | Pixels within half a pixel of a row's span are inside, sampled at the clamped point |
-| [ADR-0005](docs/adr/0005-numba-projector.md) | The default projector is a Numba-compiled parallel loop, with NumPy as fallback |
+## 6. Design rationale
+Major decisions and the alternatives we rejected are recorded in [docs/adr/](docs/adr/).

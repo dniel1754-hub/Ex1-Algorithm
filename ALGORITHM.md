@@ -86,7 +86,7 @@ The two do the same floating-point operations in the same order, and the tests c
 | Oblique trapezoid | 532 × 501 | 654 | 40 |
 | Diagonal slab | 708 × 501 | 453 | 27 |
 
-**Why NumPy alone isn't enough.** It meets the targets on axis-aligned planes but drops below 30 FPS on large oblique ones. The volume lookups take only about 5 ms of a 30 ms frame; the rest is the dozen full-array passes needed to compute coordinates. A compiled loop does all of that in one pass per pixel.
+NumPy alone falls below the 30 FPS minimum on large oblique planes. That is why Numba is the default; see [ADR-0004](docs/adr/0004-numba-projector.md).
 
 ## 6. Return value
 The algorithm returns E, an `H × W` image with the dtype of M. It is one projected frame of the volume on the given plane.

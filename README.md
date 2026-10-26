@@ -29,7 +29,7 @@ The documents follow the chain from the course's Design Docs lecture: **SRS** (w
 
 | Document | Contents |
 |---|---|
-| [SRS.md](SRS.md) | Requirements (FR/NFR), use cases with diagrams, and the traceability matrix (Appendix A) |
+| [SRS.md](SRS.md) | Requirements (FR/NFR), use case UC-01 with its activity diagram, and the traceability matrix (Appendix A) |
 | [SDD.md](SDD.md) | Architecture: context, components, classes, the sequence of a run, data, deployment (Mermaid diagrams) |
 | [ALGORITHM.md](ALGORITHM.md) | Detailed design (EDD) of the projector, with measured performance |
 | [TESTING.md](TESTING.md) | Test plan (STP) and test cases TC-01…TC-46 (STD) |

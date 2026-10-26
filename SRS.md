@@ -23,9 +23,9 @@ The system reads 3D raster data (NRRD) and a list of planes (CSV), computes one 
 ### FR-1: Volume loading
 - The system shall load a 3D volume from a `.nrrd` file.
 - Supported sizes: `1 ≤ sx, sy, sz < 2^10` (at most 1023 per axis).
-- Supported value types: unsigned 8, 16 and 32-bit integers.
-- The array index order shall match the CSV coordinates: the voxel at CSV point `(x, y, z)` is `M[x][y][z]`, read in the NRRD's native axis order (pynrrd's default Fortran index order).
-- Coordinates are **voxel indices**. The NRRD `space directions` / `space origin` (physical mm) are ignored.
+- Supported value types: unsigned 8, 16 and 32-bit integers, as the assignment requires. Signed integers and floats shall also be accepted, because the class dataset's MRHead is int16.
+- The CSV point `(x, y, z)` shall address voxel `M[x][y][z]`, in the NRRD file's own axis order.
+- Coordinates are **voxel indices**. The NRRD's physical geometry (`space directions`, `space origin`) is ignored ([ADR-0003](docs/adr/0003-voxel-coordinates.md)).
 
 ### FR-2: Plane file (CSV) parsing
 The system shall read the plane list in the format published with the assignment (see [data/lecturer_example.csv](data/lecturer_example.csv)):
@@ -41,8 +41,7 @@ Number of Points (3 or 4),x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4
 - Each remaining line is one plane, and therefore one video frame.
 - Column 1 is the point count `n ∈ {3, 4}`. It is followed by `3n` coordinates. When `n = 3`, the last three columns are empty.
 - Coordinates are real numbers. They may be negative or lie outside the volume.
-- 3 points are read as `(a, b, c)`, with `a` the apex. 4 points are read in **leg order** `(a1, b, a2, c)`: the first leg `a1→b`, then the second leg `a2→c`. `a1–a2` is the short (top) base and `b–c` the long (bottom) base.
-- *Why this order:* it is the only one under which the lecturer's 4th row is a valid isosceles trapezoid, with legs of 502.49 and bases of 300 and 400. It is also the order used by the shared class dataset.
+- 3 points are read as `(a, b, c)`, with `a` the apex. 4 points are read in **leg order** `(a1, b, a2, c)`: the first leg `a1→b`, then the second leg `a2→c`. `a1–a2` is the short (top) base and `b–c` the long (bottom) base. See [ADR-0001](docs/adr/0001-csv-point-order.md) for why.
 
 ### FR-3: Plane validation
 Every plane shall be validated before it is projected, using `EPS = 0.001`:
@@ -63,12 +62,11 @@ A row that is malformed (wrong column count or non-numeric values) or that fails
 
 ### FR-5: Video generation
 - The system shall write all frames to a single `.mp4` file, in the same order as the CSV rows.
-- **Frame size.** Images E differ in size from plane to plane, but a video needs a fixed frame size. Each E is placed, top-aligned and horizontally centred, on a canvas whose height and width are the maximum over all valid planes, each rounded up to an even number for the H.264 encoder. E is not scaled, so one image pixel stays one voxel step.
+- **Frame size.** Images E differ in size from plane to plane, but a video needs a fixed frame size. Each E is placed, top-aligned and horizontally centred, on a canvas whose height and width are the maximum over all valid planes, each rounded up to an even number, which common MP4 codecs require. E is not scaled, so one image pixel stays one voxel step.
 - **Intensity mapping.** Volume values are mapped linearly to `0–255`, using a single window computed once from the whole volume (its min and max). A shared window avoids flicker between frames.
 
 ### FR-6: Invalid planes
-- An invalid plane does not stop the run. The system prints a warning naming the row number and the failed condition, and writes an all-black frame in that position.
-- This keeps the rule that **frame i corresponds to CSV row i**.
+- An invalid plane does not stop the run. The system prints a warning naming the row number and the failed condition, and writes an all-black frame in that position, so **frame i always corresponds to CSV row i** ([ADR-0002](docs/adr/0002-invalid-rows-black-frames.md)).
 - If no row is valid, or the volume cannot be loaded, the program exits with a non-zero code and an error message.
 
 ### FR-7: Command-line interface
@@ -82,51 +80,25 @@ python Ex0.py <file.nrrd> <file.csv> <file.mp4>
 ### NFR-1: Performance (critical)
 - For a `500³` uint8 volume, projection throughput shall be **≥ 30 FPS**, with a target of **≥ 100 FPS**.
 - FPS is measured on the projection step alone (computing E from M and a plane), averaged over the frames of a run. File I/O and video encoding are excluded.
-- To meet this, the projection runs as a Numba-compiled parallel loop, with a vectorized NumPy fallback (see [ALGORITHM.md §5](ALGORITHM.md#5-implementation)). Per-pixel Python loops are not allowed in the hot path.
 
 ### NFR-2: Robustness
-- The system handles missing files, wrong formats, malformed CSV rows and degenerate or invalid geometry without crashing (FR-6, FR-7).
-- Memory: the volume is loaded once and never copied in the hot path. A 1023³ uint32 volume is about 4.3 GB, which is the stated upper bound.
+- The system shall handle missing files, wrong formats, malformed CSV rows and degenerate or invalid geometry without crashing (FR-6, FR-7).
+- Given enough memory, the system shall handle the largest allowed volume: 1023³ uint32, about 4.3 GB.
 
 ### NFR-3: Software design
-The code follows OOP/OOD principles, with one responsibility per component:
-
-| Component | Responsibility |
-|---|---|
-| `Volume` | Loads the NRRD and exposes the array, shape, dtype and intensity window |
-| `Plane` (`TrianglePlane`, `TrapezoidPlane`) | Geometry and validation of one plane |
-| `PlaneReader` | Parses the CSV into a list of planes or invalid-row records |
-| `Projector` (`NumbaProjector`, `NumpyProjector`) | Computes E from the volume array and a `Plane` |
-| `FrameComposer` | Maps intensities to 8 bits and places E on the fixed-size canvas |
-| `VideoWriter` | Encodes frames to MP4 |
-| `Ex0.py` | CLI entry point that wires the components together |
+- The code shall follow OOP/OOD principles. Loading, parsing, validation, projection, frame composition and video encoding shall be separate components, each with one responsibility. The components are described in [SDD.md](SDD.md).
 
 ### NFR-4: Testability
-- Every component can be tested in isolation. `Projector` takes a plain NumPy array, so tests can use small synthetic volumes without NRRD files.
+- Every component shall be testable in isolation. In particular, projection shall be testable on in-memory volumes, without any files.
 
 ## 4. System Environment
-- **Language:** Python 3.10+
-- **Libraries:** `numpy`, `numba` (compiled projection; optional), `pynrrd` (NRRD I/O), `imageio` + `imageio-ffmpeg` (MP4 / H.264), `pytest` (tests). See `requirements.txt`.
+- **Language:** Python 3.10+ (dependencies in `requirements.txt`)
 - **Interface:** command line only, no GUI
 - **OS:** cross-platform (Windows, macOS, Linux)
 
 ## 5. Use cases
 
-There are two actors: the **User**, who renders videos (for example a student or the grader), and the **Developer**, who checks performance. Both work at the command line.
-
-```mermaid
-flowchart LR
-    user(["👤 User"])
-    dev(["👤 Developer"])
-    subgraph system ["Plane projection system"]
-        uc1(["UC-01 Render a projection video"])
-        uc2(["UC-02 Measure projection speed"])
-        val(["Validate planes"])
-    end
-    user --- uc1
-    dev --- uc2
-    uc1 -. "«include»" .-> val
-```
+The system has one actor, the **User** (for example a student or the grader), and one user goal. Performance checking is a developer task, covered by test case TC-44 rather than by a use case.
 
 ### UC-01: Render a projection video
 | | |
@@ -174,23 +146,6 @@ flowchart TD
     next -- none left --> done[Print summary, exit 0]
 ```
 
-### UC-02: Measure projection speed
-| | |
-|---|---|
-| **Actor** | Developer |
-| **Preconditions** | `requirements.txt` is installed, with about 200 MB of free memory. |
-| **Trigger** | `python benchmarks/bench_projection.py` |
-| **Postcondition** | A per-plane FPS table is printed, and the exit code is 0 only if the default projector reaches at least 30 FPS (NFR-1). |
-
-**Main success flow**
-1. The Developer runs the benchmark.
-2. The system builds a random `500³` uint8 volume.
-3. For each projector (Numba, then NumPy for comparison), the system warms it up, then times 200 projections of each benchmark plane.
-4. The system prints the mean FPS and p95 time per plane, and a verdict for the default projector.
-
-**Alternative flows**
-- **3a.** Numba is not installed: only `NumpyProjector` is measured, and the verdict applies to it.
-
 ## Appendix A: Traceability matrix
 
 This matrix links each requirement to its use case, design, code and test cases. The test cases (`TC-xx`) are listed in [TESTING.md](TESTING.md#5-test-description-std) and the decisions (`ADR-xxxx`) in [docs/adr/](docs/adr/). Status is from the last run of `python -m pytest` and the benchmark, on 2026-10-26.
@@ -198,13 +153,13 @@ This matrix links each requirement to its use case, design, code and test cases.
 | Requirement | Use case | Design | Code | Test cases | Status |
 |---|---|---|---|---|---|
 | FR-1 Volume loading | UC-01 step 3 | SDD §3, ADR-0003 | `volume.py` | TC-27, TC-28, TC-37, TC-38, TC-39 | Passed |
-| FR-2 CSV parsing | UC-01 step 4 | SDD §5, ADR-0001 | `plane_reader.py` | TC-04, TC-05, TC-15–TC-20 | Passed |
+| FR-2 CSV parsing | UC-01 step 4 | SDD §3, ADR-0001 | `plane_reader.py` | TC-04, TC-05, TC-15–TC-20 | Passed |
 | FR-3 Plane validation | UC-01 step 4 | SDD §3 | `geometry.py` | TC-01–TC-13, TC-20, TC-43 | Passed |
-| FR-4 Projection | UC-01 step 6 | ALGORITHM.md, ADR-0004 | `projector.py`, `_kernel.py` | TC-14, TC-21–TC-31, TC-43, TC-45 | Passed |
+| FR-4 Projection | UC-01 step 6 | ALGORITHM.md | `projector.py`, `_kernel.py` | TC-14, TC-21–TC-31, TC-43, TC-45 | Passed |
 | FR-5 Video generation | UC-01 steps 5–6 | SDD §4 | `frame_composer.py`, `video_writer.py` | TC-32–TC-36, TC-40, TC-45, TC-46 | Passed |
 | FR-6 Invalid planes | UC-01 alt. 4a, 4b | ADR-0002 | `plane_reader.py`, `Ex0.py` | TC-15, TC-19, TC-36, TC-40, TC-42, TC-43 | Passed |
 | FR-7 Command line | UC-01 steps 1–2, alt. 2a, 2b | SDD §4 | `Ex0.py` | TC-40, TC-41 | Passed |
-| NFR-1 Performance | UC-02 | ALGORITHM.md §5, ADR-0005 | `_kernel.py`, `projector.py` | TC-30, TC-44 | Passed (453 FPS worst case) |
+| NFR-1 Performance | — | ALGORITHM.md §5, ADR-0004 | `_kernel.py`, `projector.py` | TC-30, TC-44 | Passed (453 FPS worst case) |
 | NFR-2 Robustness | UC-01 alt. flows | SDD §4 | all | TC-09, TC-11, TC-12, TC-19, TC-25, TC-33, TC-38, TC-41 | Passed |
 | NFR-3 Software design | — | SDD §2–3 | `projection/` | Design review in pull request | Reviewed |
 | NFR-4 Testability | — | SDD §3 | `projector.py` | TC-29, TC-30 | Passed |

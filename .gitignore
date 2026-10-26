@@ -219,3 +219,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 venv/
+# Volume data (large, download separately)
+*.nrrd
+*.mp4

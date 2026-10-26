@@ -49,8 +49,9 @@ Every plane shall be validated before it is projected, using `EPS = 0.001`:
 
 | Shape | Conditions |
 |---|---|
-| Triangle `(a, b, c)` | `\|dist(a,b) − dist(a,c)\| < EPS`; `dist(a,b) > 0`; `dist(b,c) > 0` |
-| Trapezoid `(a1, b, a2, c)` | `\|dist(a1,b) − dist(a2,c)\| < EPS`; `dist(a1,a2) ≤ dist(b,c)`; all four points are coplanar (the distance from `c` to the plane through `a1, a2, b` is `< EPS`); the legs have non-zero length |
+| Triangle `(a, b, c)` | `\|dist(a,b) − dist(a,c)\| < EPS`; `dist(a,b) > 0`; `dist(b,c) > 0`; `a` is not on the line `b–c` |
+| Trapezoid `(a1, b, a2, c)` | `\|dist(a1,b) − dist(a2,c)\| < EPS`; `dist(a1,a2) ≤ dist(b,c)`; all four points are coplanar (the distance from `a2` to the plane through `a1, b, c` is `< EPS`); the legs have non-zero length; **the legs do not cross** (`a1→a2` points the same way as `b→c`) |
+| Both | All coordinates are finite. No leg or base is longer than `MAX_SIDE = 2·√3·1023 ≈ 3544` voxels, twice the diagonal of the largest allowed volume, so the image stays a sensible size |
 
 A row that is malformed (wrong column count or non-numeric values) or that fails validation is an **invalid plane** (see FR-6).
 

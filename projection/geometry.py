@@ -6,6 +6,9 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 EPS = 1e-3
+# Longest allowed leg or base, in voxels: twice the diagonal of the largest volume (1023^3).
+# Anything longer cannot be a sensible view, and would make an image of tens of millions of pixels.
+MAX_SIDE = 2 * 1023 * 3 ** 0.5
 
 
 class InvalidPlaneError(ValueError):
@@ -55,6 +58,11 @@ class Plane(ABC):
         if abs(first - second) >= EPS:
             raise InvalidPlaneError(f"legs differ: {first:.3f} vs {second:.3f}")
 
+    def _check_size(self) -> None:
+        longest = max(self.leg_length, self.base_length)
+        if longest > MAX_SIDE:
+            raise InvalidPlaneError(f"plane too large: side of {longest:.0f} voxels (max {MAX_SIDE:.0f})")
+
     def _base_normal(self) -> np.ndarray:
         """Unit normal of the plane through a1, b, c."""
         n = np.cross(self.c - self.b, self.b - self.a1)
@@ -77,6 +85,7 @@ class TrianglePlane(Plane):
     def validate(self) -> None:
         self._check_legs(_dist(self.a1, self.b), _dist(self.a1, self.c))
         self._base_normal()
+        self._check_size()
 
 
 class TrapezoidPlane(Plane):
@@ -90,6 +99,9 @@ class TrapezoidPlane(Plane):
         off_plane = abs(float(np.dot(self.a2 - self.a1, self._base_normal())))
         if off_plane >= EPS:
             raise InvalidPlaneError(f"points are not coplanar (off by {off_plane:.3f})")
+        if float(np.dot(self.a2 - self.a1, self.c - self.b)) < 0:
+            raise InvalidPlaneError("legs cross: a1->a2 runs opposite to b->c (are a1 and a2 swapped?)")
+        self._check_size()
 
 
 def plane_from_points(points) -> Plane:

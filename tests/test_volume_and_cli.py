@@ -63,12 +63,25 @@ def test_demo_writes_one_frame_per_row(tmp_path, volume_file, capsys):
         assert np.abs(frame.astype(int) - expected).mean() < 2   # lossy H.264, but the same picture
 
 
+def test_demo_fps_sets_the_playback_rate(tmp_path, volume_file):
+    csv_path = tmp_path / "planes.csv"
+    csv_path.write_text(PLANES)
+    for args, expected in [([], 10), (["--fps", "30"], 30), (["--fps=60"], 60)]:
+        mp4 = tmp_path / f"out{expected}.mp4"
+        assert Ex0.main([str(volume_file), str(csv_path), str(mp4), *args]) == 0
+        with imageio.get_reader(str(mp4)) as reader:
+            assert reader.get_meta_data()["fps"] == pytest.approx(expected)
+            assert sum(1 for _ in reader.iter_data()) == 3   # same frames, only the rate changes
+
+
 @pytest.mark.parametrize("make_args, code, message", [
     (lambda d, v, c: [str(v)], 2, "usage"),
     (lambda d, v, c: [str(d / "none.nrrd"), str(c), str(d / "o.mp4")], 1, "file not found"),
     (lambda d, v, c: [str(v), str(d / "none.csv"), str(d / "o.mp4")], 1, "file not found"),
     (lambda d, v, c: [str(c), str(c), str(d / "o.mp4")], 1, "cannot read NRRD"),
     (lambda d, v, c: [str(v), str(c), str(d / "no_dir" / "o.mp4")], 1, "output folder"),
+    (lambda d, v, c: [str(v), str(c), str(d / "o.mp4"), "--fps", "0"], 2, "must be in"),
+    (lambda d, v, c: [str(v), str(c), str(d / "o.mp4"), "--fps", "fast"], 2, "not a number"),
 ])
 def test_demo_errors(tmp_path, volume_file, capsys, make_args, code, message):
     csv_path = tmp_path / "planes.csv"

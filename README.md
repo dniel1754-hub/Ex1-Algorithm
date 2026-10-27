@@ -74,11 +74,14 @@ NRRD files are large and are not committed (see `.gitignore`). Download them fro
 ```bash
 pip install -r requirements.txt
 python Ex0.py data/MRHead_1.nrrd data/head.csv out.mp4      # the demo
+python Ex0.py data/MRHead_1.nrrd data/head.csv out.mp4 --fps 30   # same frames, faster playback
 python -m pytest                                            # the tests
 python benchmarks/bench_projection.py                       # FPS on a 500³ volume
 ```
 
 `Ex0.py` prints a warning for each invalid CSV row (and writes a black frame for it), then a summary with the projection FPS.
+
+`--fps` sets the video's playback rate (default 10, up to 1000). It changes only how fast the MP4 plays, not how fast frames are projected: each CSV row is still one frame. Most screens show at most 60 frames per second, so higher rates skip frames on playback.
 
 ## Code layout
 | Path | Contents |
@@ -107,21 +110,21 @@ python benchmarks/bench_projection.py                       # FPS on a 500³ vol
 **Projection speed** on a random `500³` uint8 volume, from `benchmarks/bench_projection.py`: **453–3823 FPS** with `NumbaProjector`, depending on the plane. The slowest is a large oblique 708 × 501 plane. The required minimum is 30 FPS and the target is 100. The per-plane table is in [ALGORITHM.md §5](ALGORITHM.md#5-implementation).
 
 ### Class dataset
-Each volume from the [class dataset](https://drive.google.com/drive/folders/1koJ83uaeMYdJt6AwvVlmMJk_wzczvmmG?usp=sharing) was run with its own plane CSV, using `python Ex0.py data/<volume>.nrrd data/<csv>.csv experiment/<name>.mp4`. Each row has an output video in [experiment/](experiment/) and a strip of 6 sampled frames in [experiment/previews/](experiment/previews/).
+Each volume from the [class dataset](https://drive.google.com/drive/folders/1koJ83uaeMYdJt6AwvVlmMJk_wzczvmmG?usp=sharing) was run with its own plane CSV, using `python Ex0.py data/<volume>.nrrd data/<csv>.csv experiment/<name>.mp4 --fps 30`. Each row has an output video in [experiment/](experiment/) and a strip of 6 sampled frames in [experiment/previews/](experiment/previews/).
 
 | Volume | Size, type | CSV | Frames | Projection FPS | Video | Preview |
 |---|---|---|---|---|---|---|
-| MRHead_1 | 256×256×130, int16 | `head.csv` | 280 | 1380 | [mp4](experiment/MRHead_1__head.mp4) | [png](experiment/previews/MRHead_1__head.png) |
-| biscuit_cake | 256×256×130, uint16 | `biscuit_cake.csv` | 120 | 1772 | [mp4](experiment/biscuit_cake.mp4) | [png](experiment/previews/biscuit_cake.png) |
-| croissant | **500×500×500**, uint8 | `croissant.csv` | 100 | **566** | [mp4](experiment/croissant.mp4) | [png](experiment/previews/croissant.png) |
-| croissant | 500×500×500, uint8 | `lecturer_example.csv` | 4 (1 black) | 733 | [mp4](experiment/croissant__lecturer_example.mp4) | [png](experiment/previews/croissant__lecturer_example.png) |
-| onion | 256×256×130, uint8 | `onion.csv` | 120 | 1014 | [mp4](experiment/onion.mp4) | [png](experiment/previews/onion.png) |
-| swiss_roll | 256×256×130, uint32 | `swiss_roll.csv` | 120 | 1650 | [mp4](experiment/swiss_roll.mp4) | [png](experiment/previews/swiss_roll.png) |
+| MRHead_1 | 256×256×130, int16 | `head.csv` | 280 | 428 | [mp4](experiment/MRHead_1__head.mp4) | [png](experiment/previews/MRHead_1__head.png) |
+| biscuit_cake | 256×256×130, uint16 | `biscuit_cake.csv` | 120 | 320 | [mp4](experiment/biscuit_cake.mp4) | [png](experiment/previews/biscuit_cake.png) |
+| croissant | **500×500×500**, uint8 | `croissant.csv` | 100 | **299** | [mp4](experiment/croissant.mp4) | [png](experiment/previews/croissant.png) |
+| croissant | 500×500×500, uint8 | `lecturer_example.csv` | 4 (1 black) | 490 | [mp4](experiment/croissant__lecturer_example.mp4) | [png](experiment/previews/croissant__lecturer_example.png) |
+| onion | 256×256×130, uint8 | `onion.csv` | 120 | 1312 | [mp4](experiment/onion.mp4) | [png](experiment/previews/onion.png) |
+| swiss_roll | 256×256×130, uint32 | `swiss_roll.csv` | 120 | 823 | [mp4](experiment/swiss_roll.mp4) | [png](experiment/previews/swiss_roll.png) |
 
 **Observations**
 - **Correctness.** The frames show the expected structures, matching the dataset's reference images (`images/` in the Drive folder): the head's sagittal sweep and the rotating planes, the croissant's layers, the swiss roll's spiral and its candles.
 - **Every value type works.** The volumes cover int16, uint16, uint8 and uint32. Each video uses a single intensity window for the whole volume, so its brightness doesn't flicker from frame to frame.
-- **Performance.** On real data, projection ran at 566 FPS on the 500³ croissant and above 1000 FPS on the 256×256×130 volumes. That is well above the 100 FPS target. Total run time is dominated by NRRD decompression and H.264 encoding, not by the projection.
+- **Performance.** On real data, projection ran at 299–566 FPS on the 500³ croissant and 320–1772 FPS on the 256×256×130 volumes, over several runs. That is above the 100 FPS target every time. The average varies by up to about 2× between runs on the same machine, so the table shows the run that made the committed videos. Total run time is dominated by NRRD decompression and H.264 encoding, not by the projection.
 - **Invalid rows.** The lecturer's row 3 is not isosceles. It was reported with a warning and written as a black frame, so frame *i* still matches row *i*.
 - **Planes outside the volume.** The rotating planes in `head.csv` reach beyond the volume (z goes as low as −24). Those frames show only the part inside the volume and black elsewhere, with no errors.
 - **Voxel versus physical space.** We work in voxel indices and ignore the NRRD voxel spacing. So volumes with non-cubic voxels look slightly squashed along the slice axis compared with the reference images, which are drawn in millimetres: MRHead's voxels are 1 × 1 × 1.3 mm and the swiss roll's are 1.1 × 1.1 × 1.43 mm. A possible extension is to resample by the `space directions` field.

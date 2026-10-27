@@ -17,7 +17,7 @@ The course grades **design and documentation** as much as code. Keep the documen
 | [SRS.md](SRS.md) | You change behaviour. Requirements FR-1…7 and NFR-1…4, use case UC-01, and the traceability matrix in Appendix A |
 | [SDD.md](SDD.md) | You add, remove or rewire a component or class |
 | [ALGORITHM.md](ALGORITHM.md) | You touch `projection/projector.py` or `projection/_kernel.py` |
-| [TESTING.md](TESTING.md) | You add or change tests. Test cases are numbered TC-01…TC-46 |
+| [TESTING.md](TESTING.md) | You add or change tests. Test cases are numbered TC-01…TC-47 |
 | [docs/adr/](docs/adr/) | You are tempted to change one of the recorded decisions |
 
 ## Commands

@@ -21,7 +21,7 @@ That is below the 30 FPS minimum on large oblique planes. Profiling showed that 
 - Both implementations do the same floating-point operations in the same order, and are tested to be bit-identical (TC-30).
 
 ## Consequences
-- **Performance:** 453–3823 FPS on the benchmark planes, and 566 FPS on the real 500³ croissant volume. That is far above the target, even on the worst plane.
+- **Performance:** 453–3823 FPS on the benchmark planes, and 299–566 FPS on the real 500³ croissant volume. That is far above the target, even on the worst plane.
 - **New dependency:** `numba`. The first run compiles in about 1 s, and the result is cached in `__pycache__`. `Ex0.py` calls `warm_up()` before timing, so the reported FPS excludes compilation.
 - **Two implementations to maintain.** This is mitigated by shared row geometry (`Projector._rows`) and by running every projection test on both.
 

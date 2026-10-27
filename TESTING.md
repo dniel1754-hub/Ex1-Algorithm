@@ -96,13 +96,14 @@ Unless marked otherwise, each case is an automated pytest function in `tests/`. 
 | TC-38 | `test_load_errors` | FR-1, NFR-2 | Missing file, text file, 2D array | `VolumeLoadError` with a clear message |
 | TC-39 | `test_dataset_volume_loads` | FR-1 | Each class NRRD, if downloaded | Shape equals the header `sizes`. Skipped when the file is absent |
 | TC-40 | `test_demo_writes_one_frame_per_row` | FR-5, FR-6, FR-7, UC-01 | 3-row CSV with one invalid row | Exit code 0, warning for frame 2, 3 frames of 52×50, frame 2 black, other frames match the expected images |
-| TC-41 | `test_demo_errors` | FR-7, NFR-2, UC-01 | Wrong argument count, missing NRRD or CSV, non-NRRD, missing output folder | Exit codes 2 / 1 / 1 / 1 / 1 with the matching message |
+| TC-41 | `test_demo_errors` | FR-7, NFR-2, UC-01 | Wrong argument count, missing NRRD or CSV, non-NRRD, missing output folder, `--fps 0`, `--fps fast` | Exit codes 2 / 1 / 1 / 1 / 1 / 2 / 2 with the matching message |
 | TC-42 | `test_demo_fails_when_no_plane_is_valid` | FR-6, UC-01 | CSV with only an invalid row | Exit code 1, "no valid planes" |
 | TC-43 | `test_edge_cases_on_dice` | FR-3, FR-4, FR-6, UC-01 | The classmate's `edge_cases.csv` on the rebuilt die volume | 16 frames. Warnings for frames 7 and 9–16. Black frames 6, 7 and 9–16 |
+| TC-47 | `test_demo_fps_sets_the_playback_rate` | FR-7 | Same CSV with no flag, `--fps 30` and `--fps=60` | MP4 rate 10 / 30 / 60, 3 frames each time |
 
 ### 5.6 Performance and manual cases
 | ID | Test | Verifies | Procedure | Expected | Last result |
 |---|---|---|---|---|---|
 | TC-44 | `benchmarks/bench_projection.py` | NFR-1 | Run the script | Default projector ≥ 30 FPS (target 100), exit code 0 | 453–3823 FPS (Numba), passed |
 | TC-45 | Class dataset experiment (manual) | FR-4, FR-5, UC-01 | Run `Ex0.py` on each class volume with its CSV, then compare the frames in `experiment/previews/` with the dataset's `images/*.png` | Same structures. Views follow the voxel axes, so they may be rotated relative to the anatomical views, and volumes with non-cubic voxels look squashed (ADR-0003) | Passed for all 5 volumes, 2026-10-26 |
-| TC-46 | Playback (manual) | FR-5 | Open the `experiment/*.mp4` files in a browser or VLC | Plays, with duration = frames ÷ 10 FPS | Passed in Chromium for `swiss_roll.mp4` (12 s, 256×256). The rest were decoded with ffmpeg only |
+| TC-46 | Playback (manual) | FR-5 | Open the `experiment/*.mp4` files in a browser or VLC | Plays, with duration = frames ÷ the `--fps` value (30 for these videos) | Passed in Chromium for `swiss_roll.mp4` at 10 fps (12 s, 256×256). The 30 fps reruns were decoded with imageio only: 30 fps, frames ÷ 30 s |

@@ -71,9 +71,10 @@ A row that is malformed (wrong column count or non-numeric values) or that fails
 
 ### FR-7: Command-line interface
 ```
-python Ex0.py <file.nrrd> <file.csv> <file.mp4>
+python Ex0.py <file.nrrd> <file.csv> <file.mp4> [--fps N]
 ```
-- Wrong argument count, a missing input file or an unwritable output path produce a usage or error message and a non-zero exit code. The program must not show a raw stack trace.
+- `--fps` is optional and sets the video's playback rate in frames per second (default 10). It does not change the frames.
+- Wrong argument count, an invalid `--fps` value, a missing input file or an unwritable output path produce a usage or error message and a non-zero exit code. The program must not show a raw stack trace.
 
 ## 3. Non-Functional Requirements
 
@@ -158,7 +159,7 @@ This matrix links each requirement to its use case, design, code and test cases.
 | FR-4 Projection | UC-01 step 6 | ALGORITHM.md | `projector.py`, `_kernel.py` | TC-14, TC-21–TC-31, TC-43, TC-45 | Passed |
 | FR-5 Video generation | UC-01 steps 5–6 | SDD §4 | `frame_composer.py`, `video_writer.py` | TC-32–TC-36, TC-40, TC-45, TC-46 | Passed |
 | FR-6 Invalid planes | UC-01 alt. 4a, 4b | ADR-0002 | `plane_reader.py`, `Ex0.py` | TC-15, TC-19, TC-36, TC-40, TC-42, TC-43 | Passed |
-| FR-7 Command line | UC-01 steps 1–2, alt. 2a, 2b | SDD §4 | `Ex0.py` | TC-40, TC-41 | Passed |
+| FR-7 Command line | UC-01 steps 1–2, alt. 2a, 2b | SDD §4 | `Ex0.py` | TC-40, TC-41, TC-47 | Passed |
 | NFR-1 Performance | — | ALGORITHM.md §5, ADR-0004 | `_kernel.py`, `projector.py` | TC-30, TC-44 | Passed (453 FPS worst case) |
 | NFR-2 Robustness | UC-01 alt. flows | SDD §4 | all | TC-09, TC-11, TC-12, TC-19, TC-25, TC-33, TC-38, TC-41 | Passed |
 | NFR-3 Software design | — | SDD §2–3 | `projection/` | Design review in pull request | Reviewed |

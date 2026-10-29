@@ -1,0 +1,6 @@
+numpy>=2.0
+numba>=0.60      # optional: without it the slower NumPy projector is used
+pynrrd>=1.0
+imageio>=2.30
+imageio-ffmpeg>=0.5
+pytest>=8.0

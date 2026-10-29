@@ -58,6 +58,17 @@ def test_trapezoid_with_longer_top_is_invalid():
         TrapezoidPlane((0, 0, 0), (10, 10, 0), (30, 0, 0), (20, 10, 0))
 
 
+def test_trapezoid_with_crossed_legs_is_invalid():
+    a1, b, a2, c = LECTURER_ROWS[2]
+    with pytest.raises(InvalidPlaneError, match="legs cross"):
+        TrapezoidPlane(a2, b, a1, c)   # a1 and a2 swapped: still equal legs, but a bow tie
+
+
+def test_oversized_plane_is_invalid():
+    with pytest.raises(InvalidPlaneError, match="too large"):
+        TrianglePlane((0, 0, 0), (-2000, 3000, 0), (2000, 3000, 0))
+
+
 def test_trapezoid_off_plane_is_invalid():
     with pytest.raises(InvalidPlaneError, match="not coplanar"):
         TrapezoidPlane((0, 0, 0), (-5, 20, 0), (10, 0, 3), (15, 20, 3))  # equal legs, a2 lifted off

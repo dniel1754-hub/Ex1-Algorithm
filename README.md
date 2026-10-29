@@ -25,11 +25,16 @@ We compute a 2D image **E** by sampling M across p. Given a list of such shapes,
 **Out of scope:** a GUI, interpolation better than nearest neighbour, and physical (mm) coordinates. Coordinates are voxel indices.
 
 ## Documents
+The documents follow the chain from the course's Design Docs lecture: **SRS** (what) → **SDD** (structure) → **EDD** (how one component is built) → **STP/STD** (how we prove it works), with a traceability matrix linking them.
+
 | Document | Contents |
 |---|---|
-| [SRS.md](SRS.md) | Requirements, input formats, error handling, component design |
-| [ALGORITHM.md](ALGORITHM.md) | Detailed projection algorithm and its vectorized implementation |
-| [TESTING.md](TESTING.md) | Unit, integration, demo and performance testing |
+| [SRS.md](SRS.md) | Requirements (FR/NFR), use case UC-01 with its activity diagram, and the traceability matrix (Appendix A) |
+| [SDD.md](SDD.md) | Architecture: context, components, classes, the sequence of a run, data, deployment (Mermaid diagrams) |
+| [ALGORITHM.md](ALGORITHM.md) | Detailed design (EDD) of the projector, with measured performance |
+| [TESTING.md](TESTING.md) | Test plan (STP) and test cases TC-01…TC-47 (STD) |
+| [docs/adr/](docs/adr/) | Architecture Decision Records: why we chose what we chose |
+| [AGENTS.md](AGENTS.md) | Instructions for AI coding agents: commands, rules, definition of done (also loaded by `CLAUDE.md`) |
 
 ## Input formats
 
@@ -98,7 +103,7 @@ python benchmarks/bench_projection.py                       # FPS on a 500³ vol
 - [x] Dataset of NRRD files
 - [x] Testing strategy, including the demo
 - [x] Implementation (commit frequently)
-- [x] Demo `Ex0.py <file.nrrd> <file.csv> <file.mp4>`
+- [x] Demo `Ex0.py <file.nrrd> <file.csv> <file.mp4> [--fps N]`
 - [x] Experiment: results on the class dataset and output `.mp4`
 
 ## Experiment results

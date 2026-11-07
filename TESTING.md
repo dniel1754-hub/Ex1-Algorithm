@@ -87,7 +87,8 @@ Unless marked otherwise, each case is an automated pytest function in `tests/`. 
 | TC-33 | `test_constant_volume_does_not_divide_by_zero` | FR-5, NFR-2 | Window 7–7 | All zeros, no error |
 | TC-34 | `test_canvas_is_max_size_rounded_up_to_even` | FR-5 | Shapes 52×49, 501×401, 10×600 | Canvas 502 × 600 |
 | TC-35 | `test_image_is_top_aligned_and_centred` | FR-5 | 3×4 image on a 6×8 canvas | Placed at rows 0–2, columns 2–5 |
-| TC-36 | `test_blank_frame_and_too_large_image` | FR-5, FR-6 | — | The blank frame is black at canvas size. An oversized image raises `ValueError` |
+| TC-36 | `test_blank_frame_and_too_large_image` | FR-5 | — | The blank frame is black at canvas size. An oversized image raises `ValueError` |
+| TC-48 | `test_error_frame_marks_invalid_row` | FR-5, FR-6 | Canvas 60×80, frame 3 | Mostly black canvas marked with border, diagonal cross `X`, and `ERR 3` label |
 
 ### 5.5 Volume, CLI and system (`test_volume_and_cli.py`, `test_dataset.py`)
 | ID | Test | Verifies | Input | Expected |
@@ -95,15 +96,15 @@ Unless marked otherwise, each case is an automated pytest function in `tests/`. 
 | TC-37 | `test_nrrd_round_trip_keeps_axis_order_and_type` | FR-1 | Coded uint32 volume written with pynrrd | Shape, dtype, values and `[x, y, z]` order are kept. The window is correct |
 | TC-38 | `test_load_errors` | FR-1, NFR-2 | Missing file, text file, 2D array | `VolumeLoadError` with a clear message |
 | TC-39 | `test_dataset_volume_loads` | FR-1 | Each class NRRD, if downloaded | Shape equals the header `sizes`. Skipped when the file is absent |
-| TC-40 | `test_demo_writes_one_frame_per_row` | FR-5, FR-6, FR-7, UC-01 | 3-row CSV with one invalid row | Exit code 0, warning for frame 2, 3 frames of 52×50, frame 2 black, other frames match the expected images |
+| TC-40 | `test_demo_writes_one_frame_per_row` | FR-5, FR-6, FR-7, UC-01 | 3-row CSV with one invalid row | Exit code 0, warning for frame 2, 3 frames of 52×50, frame 2 is a marked error frame, other frames match the expected images |
 | TC-41 | `test_demo_errors` | FR-7, NFR-2, UC-01 | Wrong argument count, missing NRRD or CSV, non-NRRD, missing output folder, `--fps 0`, `--fps fast` | Exit codes 2 / 1 / 1 / 1 / 1 / 2 / 2 with the matching message |
 | TC-42 | `test_demo_fails_when_no_plane_is_valid` | FR-6, UC-01 | CSV with only an invalid row | Exit code 1, "no valid planes" |
-| TC-43 | `test_edge_cases_on_dice` | FR-3, FR-4, FR-6, UC-01 | The classmate's `edge_cases.csv` on the rebuilt die volume | 16 frames. Warnings for frames 7 and 9–16. Black frames 6, 7 and 9–16 |
+| TC-43 | `test_edge_cases_on_dice` | FR-3, FR-4, FR-6, UC-01 | The classmate's `edge_cases.csv` on the rebuilt die volume | 16 frames. Warnings for frames 7 and 9–16. Frame 6 is unmarked black (misses the die); frames 7 and 9–16 are marked error frames |
 | TC-47 | `test_demo_fps_sets_the_playback_rate` | FR-7 | Same CSV with no flag, `--fps 30` and `--fps=60` | MP4 rate 10 / 30 / 60, 3 frames each time |
 
 ### 5.6 Performance and manual cases
 | ID | Test | Verifies | Procedure | Expected | Last result |
 |---|---|---|---|---|---|
-| TC-44 | `benchmarks/bench_projection.py` | NFR-1 | Run the script | Default projector ≥ 30 FPS (target 100), exit code 0 | 453–3823 FPS (Numba), passed |
-| TC-45 | Class dataset experiment (manual) | FR-4, FR-5, UC-01 | Run `Ex0.py` on each class volume with its CSV, then compare the frames in `experiment/previews/` with the dataset's `images/*.png` | Same structures. Views follow the voxel axes, so they may be rotated relative to the anatomical views, and volumes with non-cubic voxels look squashed (ADR-0003) | Passed for all 5 volumes, 2026-10-26 |
-| TC-46 | Playback (manual) | FR-5 | Open the `experiment/*.mp4` files in a browser or VLC | Plays, with duration = frames ÷ the `--fps` value (30 for these videos) | Passed in Chromium for `swiss_roll.mp4` at 10 fps (12 s, 256×256). The 30 fps reruns were decoded with imageio only: 30 fps, frames ÷ 30 s |
+| TC-44 | `benchmarks/bench_projection.py` | NFR-1 | Run the script | Default projector ≥ 30 FPS (target 100), exit code 0 | 1025–3942 FPS (Numba, 1827 mean), passed |
+| TC-45 | Class dataset experiment (manual) | FR-4, FR-5, UC-01 | Run `Ex0.py` on each class volume with its CSV, then compare the frames in `experiment/previews/` with the dataset's `images/*.png` | Same structures. Views follow the voxel axes, so they may be rotated relative to the anatomical views, and volumes with non-cubic voxels look squashed (ADR-0003) | Passed for all 5 volumes, 2026-11-07 |
+| TC-46 | Playback (manual) | FR-5 | Open the `experiment/*.mp4` files in a browser or VLC | Plays, with duration = frames ÷ the `--fps` value (30 for these videos) | Passed in Chromium for `swiss_roll.mp4` at 10 fps (12 s, 256×256). The 30 fps reruns were decoded with imageio: 30 fps, frames ÷ 30 s |

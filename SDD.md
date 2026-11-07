@@ -60,7 +60,7 @@ flowchart TB
 | `TrianglePlane`, `TrapezoidPlane` | Hold the four scan points `a1, b, a2, c` and validate them against SRS FR-3 | NumPy |
 | `Volume` | Loads the NRRD as `data[x, y, z]` and computes the intensity window | pynrrd |
 | `Projector` | Computes the image E of a plane through the volume (detailed in ALGORITHM.md) | `geometry`, Numba (optional) |
-| `FrameComposer` | Maps E to 8 bits and places it on a fixed, even-sized canvas | NumPy |
+| `FrameComposer` | Maps E to 8 bits, places it on a fixed even-sized canvas, and renders marked error frames | NumPy |
 | `VideoWriter` | Encodes frames to H.264 MP4 | imageio-ffmpeg |
 
 Each component has one reason to change. Only `Ex0.py` knows about files and exit codes. `Projector` takes a plain NumPy array, so it can be tested without any files (NFR-4).
@@ -122,6 +122,7 @@ classDiagram
         +to_uint8(image) ndarray
         +compose(image) ndarray
         +blank() ndarray
+        +error_frame(frame_no) ndarray
     }
     class VideoWriter {
         +frames_written : int
@@ -166,8 +167,8 @@ sequenceDiagram
             CLI->>Co: compose(E)
             Co-->>CLI: 8-bit frame
         else record is invalid
-            CLI->>Co: blank()
-            Co-->>CLI: black frame
+            CLI->>Co: error_frame(frame)
+            Co-->>CLI: marked error frame
         end
         CLI->>Wr: write(frame)
     end
@@ -185,7 +186,7 @@ No stack trace reaches the user for an expected failure (NFR-2).
 ## 5. Data, libraries and runtime
 - **File formats** (NRRD, the plane CSV, MP4) are specified in [SRS FR-1, FR-2 and FR-5](SRS.md#2-functional-requirements). The image E is described in [ALGORITHM.md](ALGORITHM.md).
 - **Volume in memory:** pynrrd loads the NRRD in Fortran index order, so `data[x, y, z]` matches the CSV coordinates with no copy or transpose. It is held once: 125 MB for 500³ uint8, up to 4.3 GB for 1023³ uint32.
-- **Libraries:** NumPy, Numba (optional), pynrrd for NRRD input, imageio with imageio-ffmpeg for H.264 MP4 output at 10 FPS, and pytest for the tests. Versions are in `requirements.txt`.
+- **Libraries:** NumPy, Numba (optional), pynrrd for NRRD input, imageio with imageio-ffmpeg for H.264 MP4 output (default 10 FPS, configurable via `--fps`), and pytest for the tests. Versions are in `requirements.txt`.
 - **Runtime:** one Python process, with no network and no server. Numba spreads rows across all CPU cores and caches the compiled kernel in `projection/__pycache__`, so only the first run pays the roughly 1 s compile time.
 
 ## 6. Design rationale

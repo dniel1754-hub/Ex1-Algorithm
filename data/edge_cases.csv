@@ -5,6 +5,10 @@ Number of Points (3 or 4),x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4
 # 3 for a triangle a, b, c, or 4 for a trapezoid a', b, a'', c (FR-12).
 # python Ex0.py DATA/synthetic/dice.nrrd demo/edge_cases.csv demo/output/edge_cases.mp4
 # Expected: 16 frames; black: frames 6, 9 to 16; a warning for frames 7 to 16.
+# Note (our SRS FR-3 / FR-6): the FR-* numbers in comments below come from the classmate who authored this CSV.
+# Under our strict EPS=0.001 validation (ADR-0002, ADR-0005), frame 7 (unequal legs) is also rejected as a marked
+# error frame with a warning, whereas frame 8 (equal legs, coplanar, top <= bottom) satisfies all Q&A trapezoid rules
+# and is projected without a warning. Frame 6 (valid plane outside the die) projects to an unmarked black frame.
 
 # Good planes, whose images are known in advance (docs/TESTING.md, section 3.5)
 # frame 1: the top face, z = 139, as a rectangle over the whole slice: a 120 x 120 square with one pip

@@ -41,7 +41,7 @@ Number of Points (3 or 4),x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4
 - Each remaining line is one plane, and therefore one video frame.
 - Column 1 is the point count `n ∈ {3, 4}`. It is followed by `3n` coordinates. When `n = 3`, the last three columns are empty.
 - Coordinates are real numbers. They may be negative or lie outside the volume.
-- 3 points are read as `(a, b, c)`, with `a` the apex. 4 points are read in **leg order** `(a1, b, a2, c)`: the first leg `a1→b`, then the second leg `a2→c`. `a1–a2` is the short (top) base and `b–c` the long (bottom) base. See [ADR-0001](docs/adr/0001-csv-point-order.md) for why.
+- 3 points are read as `(a, b, c)`, with `a` the apex. While the assignment's Q&A names the four vertices as `(a1, a2, b, c)` when listing the geometric conditions, 4-point CSV rows list the two leg vectors one after the other in **leg order** `(a1, b, a2, c)`: the first leg `a1→b`, then the second leg `a2→c`. `a1–a2` is the short (top) base and `b–c` the long (bottom) base. See [ADR-0001](docs/adr/0001-csv-point-order.md) for why.
 
 ### FR-3: Plane validation
 Every plane shall be validated before it is projected, using `EPS = 0.001`:
@@ -66,7 +66,8 @@ A row that is malformed (wrong column count or non-numeric values) or that fails
 - **Intensity mapping.** Volume values are mapped linearly to `0–255`, using a single window computed once from the whole volume (its min and max). A shared window avoids flicker between frames.
 
 ### FR-6: Invalid planes
-- An invalid plane does not stop the run. The system prints a warning naming the row number and the failed condition, and writes an all-black frame in that position, so **frame i always corresponds to CSV row i** ([ADR-0002](docs/adr/0002-invalid-rows-black-frames.md)).
+- In the geometry layer, an invalid point set raises `InvalidPlaneError`.
+- In the CLI demo, an invalid plane does not stop the run. The system prints a warning naming the row number and the failed condition, and writes a **marked error frame** (a black frame marked with a border, a diagonal cross `X`, and the label `ERR <frame>`) in that position, so **frame i always corresponds to CSV row i** and invalid rows are visually distinct from valid planes that miss the volume ([ADR-0002](docs/adr/0002-invalid-rows-black-frames.md), [ADR-0005](docs/adr/0005-marked-error-frames.md)).
 - If no row is valid, or the volume cannot be loaded, the program exits with a non-zero code and an error message.
 
 ### FR-7: Command-line interface
@@ -116,15 +117,15 @@ The system has one actor, the **User** (for example a student or the grader), an
 4. The system reads the CSV and validates every plane (FR-2, FR-3).
 5. The system sizes the video canvas from the valid planes (FR-5).
 6. For each row, in order, the system projects the plane, converts the image to an 8-bit frame on the canvas, and writes it (FR-4, FR-5).
-7. The system prints a summary (frames written, frames black, projection FPS) and exits with code 0.
+7. The system prints a summary (frames written, error frames, projection FPS) and exits with code 0.
 
 **Alternative flows**
 - **2a.** Wrong number of arguments: the system prints the usage line and exits with code 2.
 - **2b.** An input file or the output folder is missing: the system prints an error and exits with code 1.
 - **3a.** The file is not a readable 3D NRRD, or an axis is larger than 1023: the system prints an error and exits with code 1.
-- **4a.** A row is malformed or fails validation: the system prints a warning with the frame number, line number and reason. In step 6 it writes a black frame for that row (FR-6).
+- **4a.** A row is malformed or fails validation: the system prints a warning with the frame number, line number and reason. In step 6 it writes a marked error frame (black with a cross and `ERR <frame>`) for that row (FR-6).
 - **4b.** No row is valid: the system prints an error and exits with code 1.
-- **6a.** A plane lies partly or fully outside the volume: those pixels are black. This is not an error and gives no warning (FR-4).
+- **6a.** A plane lies partly or fully outside the volume: those pixels are unmarked black. This is not an error and gives no warning (FR-4).
 
 ```mermaid
 flowchart TD
@@ -141,15 +142,15 @@ flowchart TD
     warn --> canvas[Size canvas from valid planes]
     canvas --> next{next row?}
     next -- valid --> proj[Project plane, compose frame, write]
-    next -- invalid --> black[Write black frame]
+    next -- invalid --> errframe[Write marked error frame]
     proj --> next
-    black --> next
+    errframe --> next
     next -- none left --> done[Print summary, exit 0]
 ```
 
 ## Appendix A: Traceability matrix
 
-This matrix links each requirement to its use case, design, code and test cases. The test cases (`TC-xx`) are listed in [TESTING.md](TESTING.md#5-test-description-std) and the decisions (`ADR-xxxx`) in [docs/adr/](docs/adr/). Status is from the last run of `python -m pytest` and the benchmark, on 2026-10-26.
+This matrix links each requirement to its use case, design, code and test cases. The test cases (`TC-xx`) are listed in [TESTING.md](TESTING.md#5-test-description-std) and the decisions (`ADR-xxxx`) in [docs/adr/](docs/adr/). Status is from the last run of `python -m pytest` (87 passed, 0 skipped) and the benchmark, on 2026-11-07.
 
 | Requirement | Use case | Design | Code | Test cases | Status |
 |---|---|---|---|---|---|
@@ -157,10 +158,10 @@ This matrix links each requirement to its use case, design, code and test cases.
 | FR-2 CSV parsing | UC-01 step 4 | SDD §3, ADR-0001 | `plane_reader.py` | TC-04, TC-05, TC-15–TC-20 | Passed |
 | FR-3 Plane validation | UC-01 step 4 | SDD §3 | `geometry.py` | TC-01–TC-13, TC-20, TC-43 | Passed |
 | FR-4 Projection | UC-01 step 6 | ALGORITHM.md | `projector.py`, `_kernel.py` | TC-14, TC-21–TC-31, TC-43, TC-45 | Passed |
-| FR-5 Video generation | UC-01 steps 5–6 | SDD §4 | `frame_composer.py`, `video_writer.py` | TC-32–TC-36, TC-40, TC-45, TC-46 | Passed |
-| FR-6 Invalid planes | UC-01 alt. 4a, 4b | ADR-0002 | `plane_reader.py`, `Ex0.py` | TC-15, TC-19, TC-36, TC-40, TC-42, TC-43 | Passed |
+| FR-5 Video generation | UC-01 steps 5–6 | SDD §4 | `frame_composer.py`, `video_writer.py` | TC-32–TC-36, TC-40, TC-45, TC-46, TC-48 | Passed |
+| FR-6 Invalid planes | UC-01 alt. 4a, 4b | ADR-0002, ADR-0005 | `plane_reader.py`, `frame_composer.py`, `Ex0.py` | TC-15, TC-19, TC-36, TC-40, TC-42, TC-43, TC-48 | Passed |
 | FR-7 Command line | UC-01 steps 1–2, alt. 2a, 2b | SDD §4 | `Ex0.py` | TC-40, TC-41, TC-47 | Passed |
-| NFR-1 Performance | — | ALGORITHM.md §5, ADR-0004 | `_kernel.py`, `projector.py` | TC-30, TC-44 | Passed (453 FPS worst case) |
+| NFR-1 Performance | — | ALGORITHM.md §5, ADR-0004 | `_kernel.py`, `projector.py` | TC-30, TC-44 | Passed (1025 FPS worst case) |
 | NFR-2 Robustness | UC-01 alt. flows | SDD §4 | all | TC-09, TC-11, TC-12, TC-19, TC-25, TC-33, TC-38, TC-41 | Passed |
 | NFR-3 Software design | — | SDD §2–3 | `projection/` | Design review in pull request | Reviewed |
 | NFR-4 Testability | — | SDD §3 | `projector.py` | TC-29, TC-30 | Passed |

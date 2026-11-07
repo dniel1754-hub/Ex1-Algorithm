@@ -1,6 +1,6 @@
 # ADR-0002: Invalid rows give a warning and a black frame
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0005](0005-marked-error-frames.md)
 - **Date:** 2026-10-26
 - **Requirements:** SRS FR-6, NFR-2
 

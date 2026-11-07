@@ -54,10 +54,11 @@ def test_demo_writes_one_frame_per_row(tmp_path, volume_file, capsys):
         frames = [frame[..., 0] for frame in reader.iter_data()]
     assert len(frames) == 3
     assert frames[0].shape[:2] == (52, 50)              # canvas: max(52, 46) x max(49, 49) rounded to even
-    assert frames[1].max() <= 2                         # the invalid row is black (allowing codec noise)
 
     volume = Volume.load(volume_file)
     composer = FrameComposer(volume.window, (52, 50))
+    assert frames[1].max() > 100                        # the invalid row is a marked error frame
+    assert np.abs(frames[1].astype(int) - composer.error_frame(2).astype(int)).mean() < 8
     for frame, record in zip(frames[::2], [r for r in PlaneReader().read(csv_path) if r.is_valid]):
         expected = composer.compose(NumpyProjector().project(volume.data, record.plane)).astype(int)
         assert np.abs(frame.astype(int) - expected).mean() < 2   # lossy H.264, but the same picture

@@ -48,7 +48,9 @@ def test_edge_cases_on_dice(tmp_path, capsys):
     warned = sorted(int(line.split()[2]) for line in capsys.readouterr().err.splitlines() if "warning" in line)
     assert warned == EXPECTED_INVALID["edge_cases.csv"]
     with imageio.get_reader(str(mp4)) as reader:
-        lit = [frame[..., 0].max() > 50 for frame in reader.iter_data()]
-    assert len(lit) == 16
-    black = [i + 1 for i, on in enumerate(lit) if not on]
-    assert black == [6] + EXPECTED_INVALID["edge_cases.csv"]   # 6 misses the die; the rest are invalid
+        frames = [frame[..., 0] for frame in reader.iter_data()]
+    assert len(frames) == 16
+    unmarked_black = [i + 1 for i, f in enumerate(frames) if f.max() <= 5]
+    error_frames = [i + 1 for i, f in enumerate(frames) if f[0, 0] > 100 and f[-1, -1] > 100]
+    assert unmarked_black == [6]                                # 6 is valid but misses the die
+    assert error_frames == EXPECTED_INVALID["edge_cases.csv"]   # invalid rows get marked error frames

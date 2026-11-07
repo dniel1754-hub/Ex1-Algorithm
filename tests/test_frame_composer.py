@@ -32,3 +32,13 @@ def test_blank_frame_and_too_large_image():
     assert composer.blank().shape == (4, 4) and not composer.blank().any()
     with pytest.raises(ValueError):
         composer.compose(np.zeros((5, 4), np.uint8))
+
+
+def test_error_frame_marks_invalid_row():
+    composer = FrameComposer((0, 255), (60, 80))
+    err3 = composer.error_frame(3)
+    assert err3.shape == (60, 80) and err3.dtype == np.uint8
+    assert (err3 == 0).mean() > 0.75                    # mostly black background
+    assert err3[0, 0] == 200 and err3[30, 40] == 200    # border and diagonal cross X
+    assert err3.max() == 255                            # 'ERR 3' text label
+    assert not np.array_equal(err3, composer.error_frame(4))

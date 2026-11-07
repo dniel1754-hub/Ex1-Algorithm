@@ -26,7 +26,7 @@ def run(nrrd_path: str, csv_path: str, mp4_path: str, fps: float = DEFAULT_FPS) 
     records = PlaneReader().read(csv_path)
     for r in records:
         if not r.is_valid:
-            print(f"warning: frame {r.frame} (line {r.line}): invalid plane, writing a black frame: {r.error}",
+            print(f"warning: frame {r.frame} (line {r.line}): invalid plane, writing an error frame: {r.error}",
                   file=sys.stderr)
     valid = [r for r in records if r.is_valid]
     if not valid:
@@ -41,7 +41,7 @@ def run(nrrd_path: str, csv_path: str, mp4_path: str, fps: float = DEFAULT_FPS) 
     with VideoWriter(mp4_path, fps=fps) as video:
         for r in records:
             if not r.is_valid:
-                video.write(composer.blank())
+                video.write(composer.error_frame(r.frame))
                 continue
             start = time.perf_counter()
             image = projector.project(volume.data, r.plane)
@@ -50,7 +50,7 @@ def run(nrrd_path: str, csv_path: str, mp4_path: str, fps: float = DEFAULT_FPS) 
 
     projection_fps = len(valid) / projection_time if projection_time > 0 else float("inf")
     print(f"volume {volume.shape} {volume.dtype}: wrote {video.frames_written} frames "
-          f"({len(valid)} projected, {len(records) - len(valid)} black) of {canvas[1]}x{canvas[0]} "
+          f"({len(valid)} projected, {len(records) - len(valid)} error) of {canvas[1]}x{canvas[0]} "
           f"at {fps:g} fps to {mp4_path}; projection {projection_fps:.0f} FPS ({type(projector).__name__})")
     return 0
 
